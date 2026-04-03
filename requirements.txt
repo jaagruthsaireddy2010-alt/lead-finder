@@ -3,7 +3,6 @@ uvicorn
 requests
 httpx
 beautifulsoup4
-pandas==2.0.3
 fake-useragent
 colorama
 lxml
