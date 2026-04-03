@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Local AI Lead Finder</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { background: #0a0a0a; }
+@keyframes pulse-glow { 0%,100%{opacity:0.3} 50%{opacity:0.7} }
+@keyframes spin { to{transform:rotate(360deg)} }
+.loader{width:18px;height:18px;border:2px solid #a855f7;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block}
+.glow-purple{box-shadow:0 0 35px rgba(138,43,226,0.2)}
+.glow-gold{box-shadow:0 0 18px rgba(255,215,0,0.45)}
+.input-style{height:44px;width:100%;border-radius:12px;border:1px solid #3f3f46;background:rgba(0,0,0,0.4);padding:0 12px;font-size:14px;color:white;outline:none;transition:0.3s}
+.input-style:focus{border-color:#8A2BE2;box-shadow:0 0 0 2px rgba(138,43,226,0.3),0 0 16px rgba(138,43,226,0.4)}
+.input-style::placeholder{color:#71717a}
+.btn-gold{height:48px;border-radius:12px;background:linear-gradient(to right,#c89b14,#FFD700,#ffea8a);padding:0 24px;font-size:14px;font-weight:600;color:black;border:none;cursor:pointer;transition:0.3s}
+.btn-gold:hover{transform:scale(1.03);filter:brightness(1.1);box-shadow:0 0 24px rgba(255,215,0,0.75)}
+.btn-gold:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-purple{border-radius:12px;border:1px solid rgba(168,85,247,0.4);background:rgba(168,85,247,0.2);padding:10px 20px;font-size:14px;color:#e9d5ff;cursor:pointer;transition:0.3s}
+.btn-purple:hover{background:rgba(168,85,247,0.35);box-shadow:0 0 14px rgba(138,43,226,0.55)}
+.btn-purple:disabled{opacity:0.4;cursor:not-allowed}
+table{width:100%;text-align:left;font-size:14px;border-collapse:collapse}
+th{padding:12px 16px;font-weight:500;white-space:nowrap;color:#d4d4d8;background:rgba(0,0,0,0.35)}
+td{padding:12px 16px;color:#d4d4d8;border-top:1px solid rgba(63,63,70,0.5)}
+tr:hover td{background:rgba(168,85,247,0.1)}
+.badge{border-radius:9999px;padding:4px 12px;font-size:12px;font-weight:600}
+.badge-high{background:rgba(253,224,71,0.2);color:#fde047;box-shadow:0 0 16px rgba(255,215,0,0.45)}
+.badge-medium{background:rgba(168,85,247,0.2);color:#d8b4fe;box-shadow:0 0 16px rgba(138,43,226,0.5)}
+.badge-low{background:rgba(113,113,122,0.25);color:#d4d4d8}
+.toggle{position:relative;width:44px;height:24px;border-radius:9999px;border:1px solid #52525b;background:#27272a;cursor:pointer;transition:0.3s}
+.toggle.on{border-color:#c084fc;background:rgba(168,85,247,0.4);box-shadow:0 0 14px rgba(138,43,226,0.5)}
+.toggle-dot{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:white;transition:0.3s}
+.toggle.on .toggle-dot{left:22px}
+.card{border-radius:16px;border:1px solid rgba(168,85,247,0.2);backdrop-filter:blur(12px);padding:20px 24px}
+.stat-card{border-radius:12px;border:1px solid rgba(168,85,247,0.2);background:rgba(24,24,27,0.5);padding:16px;text-align:center}
+.no-web{background:rgba(239,68,68,0.2);color:#fca5a5;padding:2px 8px;border-radius:4px;font-size:12px}
+.progress-bar{height:12px;width:100%;border-radius:9999px;background:#27272a;overflow:hidden}
+.progress-fill{height:100%;border-radius:9999px;background:linear-gradient(to right,#8A2BE2,#a855f7,#FFD700);transition:width 0.3s;box-shadow:0 0 18px rgba(138,43,226,0.8)}
+a.web-link{color:#c084fc;text-decoration:underline;text-decoration-color:rgba(168,85,247,0.4)}
+a.web-link:hover{color:#e9d5ff}
+.select-style{height:44px;width:100%;border-radius:12px;border:1px solid #3f3f46;background:rgba(0,0,0,0.4);padding:0 12px;font-size:14px;color:white;outline:none;transition:0.3s;appearance:none}
+.select-style:focus{border-color:#8A2BE2;box-shadow:0 0 0 2px rgba(138,43,226,0.3)}
+select option{background:#18181b;color:white}
+.mode-btn{border-radius:9999px;padding:8px 16px;font-size:14px;cursor:pointer;transition:0.3s;border:none;background:transparent;color:#d4d4d8}
+.mode-btn:hover{color:white}
+.mode-btn.active{background:rgba(138,43,226,0.35);color:white;box-shadow:0 0 16px rgba(138,43,226,0.45)}
+</style>
+</head>
+<body class="text-zinc-100 min-h-screen relative overflow-auto">
+
+<!-- Background Effects -->
+<div style="pointer-events:none;position:absolute;inset:0;opacity:0.6;overflow:hidden">
+  <div style="position:absolute;top:-128px;left:0;width:576px;height:576px;border-radius:50%;background:rgba(126,34,206,0.3);filter:blur(120px)"></div>
+  <div style="position:absolute;top:96px;right:-128px;width:512px;height:512px;border-radius:50%;background:rgba(192,38,211,0.2);filter:blur(100px)"></div>
+</div>
+
+<div style="position:relative;z-index:10;max-width:1280px;margin:0 auto;padding:0 16px 48px">
+
+  <!-- HEADER -->
+  <header style="position:sticky;top:0;z-index:20;margin:16px 0 40px;display:flex;align-items:center;justify-content:space-between;border-radius:16px;border:1px solid rgba(168,85,247,0.2);background:rgba(0,0,0,0.4);padding:12px 24px;backdrop-filter:blur(16px)">
+    <div style="font-size:20px;font-weight:600;color:white">Local AI Lead Finder</div>
+    <nav>
+      <a href="#dashboard" style="color:#d4d4d8;text-decoration:none;margin:0 12px;font-size:14px">Dashboard</a>
+      <a href="#results" style="color:#d4d4d8;text-decoration:none;margin:0 12px;font-size:14px">Results</a>
+      <a href="#export" style="color:#d4d4d8;text-decoration:none;margin:0 12px;font-size:14px">Export</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section id="dashboard" style="margin-bottom:40px;padding-top:16px">
+    <h1 style="font-size:48px;font-weight:600;color:white;line-height:1.1;max-width:768px">Find High-Quality Local Leads Instantly</h1>
+    <p style="margin-top:20px;color:#a1a1aa;font-size:18px;max-width:640px">AI-powered lead generation for selling automation services — connected to live search</p>
+    <div style="margin-top:20px;height:1px;width:256px;background:linear-gradient(to right,#8A2BE2,#FFD700,transparent)"></div>
+  </section>
+
+  <!-- ERROR BAR -->
+  <div id="errorBar" style="display:none;margin-bottom:24px;border-radius:12px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);padding:16px;font-size:14px;color:#fca5a5">
+    <strong>⚠️ Error: </strong><span id="errorText"></span>
+    <button onclick="document.getElementById('errorBar').style.display='none'" style="margin-left:16px;color:#f87171;background:none;border:none;cursor:pointer">✕</button>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <div id="summarySection" style="display:none;margin-bottom:24px">
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">
+      <div class="stat-card"><div id="statTotal" style="font-size:28px;font-weight:700;color:white">0</div><div style="margin-top:4px;font-size:12px;color:#a1a1aa">Total Leads</div></div>
+      <div class="stat-card"><div id="statHigh" style="font-size:28px;font-weight:700;color:#fde047">0</div><div style="margin-top:4px;font-size:12px;color:#a1a1aa">High Potential</div></div>
+      <div class="stat-card"><div id="statMedium" style="font-size:28px;font-weight:700;color:#d8b4fe">0</div><div style="margin-top:4px;font-size:12px;color:#a1a1aa">Medium</div></div>
+      <div class="stat-card"><div id="statLow" style="font-size:28px;font-weight:700;color:#a1a1aa">0</div><div style="margin-top:4px;font-size:12px;color:#a1a1aa">Low</div></div>
+      <div class="stat-card"><div id="statNoWeb" style="font-size:28px;font-weight:700;color:#fdba74">0</div><div style="margin-top:4px;font-size:12px;color:#a1a1aa">No Website</div></div>
+      <div class="stat-card"><div id="statEmail" style="font-size:28px;font-weight:700;color:#6ee7b7">0</div><div style="margin-top:4px;font-size:12px;color:#a1a1aa">Emails Found</div></div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div style="display:grid;grid-template-columns:1.8fr 0.8fr;gap:24px">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:24px">
+
+      <!-- INPUT CARD -->
+      <section class="card glow-purple" style="background:rgba(24,24,27,0.6)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <h2 style="font-size:20px;font-weight:600;color:white">Lead Search Input</h2>
+          <span style="font-size:12px;letter-spacing:3px;color:#71717a;text-transform:uppercase">Live Search</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <label><span style="font-size:14px;font-weight:500;color:#FFD700;display:block;margin-bottom:8px">Location</span>
+            <input id="inpLocation" class="input-style" value="Yelachenahalli, Bangalore" placeholder="City, Area">
+          </label>
+          <label><span style="font-size:14px;font-weight:500;color:#FFD700;display:block;margin-bottom:8px">Business Type</span>
+            <input id="inpBusiness" class="input-style" value="Dentist" placeholder="Dentist, Gym, Salon...">
+          </label>
+          <label><span style="font-size:14px;font-weight:500;color:#FFD700;display:block;margin-bottom:8px">Search Radius</span>
+            <select id="inpRadius" class="select-style">
+              <option>1 km</option><option>3 km</option><option selected>5 km</option><option>10 km</option>
+            </select>
+          </label>
+          <label><span style="font-size:14px;font-weight:500;color:#FFD700;display:block;margin-bottom:8px">Email Address</span>
+            <input id="inpEmail" class="input-style" placeholder="your@email.com">
+          </label>
+        </div>
+        <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <p style="font-size:14px;font-weight:500;color:#FFD700;margin-bottom:8px">Depth Mode</p>
+            <div style="display:inline-flex;border-radius:9999px;border:1px solid rgba(168,85,247,0.35);background:rgba(0,0,0,0.4);padding:4px">
+              <button id="modeFast" class="mode-btn" onclick="setMode('Fast')">Fast</button>
+              <button id="modeDetailed" class="mode-btn active" onclick="setMode('Detailed')">Detailed</button>
+            </div>
+          </div>
+          <button id="btnGenerate" class="btn-gold" onclick="generateLeads()">Generate Leads</button>
+        </div>
+      </section>
+
+      <!-- PROGRESS CARD -->
+      <section class="card" style="background:rgba(0,0,0,0.35)">
+        <h3 style="font-size:18px;font-weight:500;color:white;margin-bottom:16px">Lead Discovery Progress</h3>
+        <div class="progress-bar"><div id="progressFill" class="progress-fill" style="width:0%"></div></div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:12px;font-size:14px;color:#d4d4d8">
+          <span id="loaderIcon" class="loader" style="display:none"></span>
+          <span id="progressText">Ready to launch a new search</span>
+        </div>
+        <div id="stepsList" style="margin-top:16px;font-size:14px;color:#71717a">
+          <p>1. Searching DuckDuckGo Maps...</p>
+          <p>2. Searching DuckDuckGo Web...</p>
+          <p>3. Scraping Google results...</p>
+          <p>4. Extracting emails from websites...</p>
+          <p>5. Scoring and ranking leads...</p>
+        </div>
+      </section>
+
+      <!-- RESULTS TABLE -->
+      <section id="results" class="card" style="background:rgba(24,24,27,0.45);padding:0;overflow:hidden">
+        <div style="border-bottom:1px solid rgba(168,85,247,0.2);padding:16px 24px">
+          <h3 style="font-size:18px;font-weight:500;color:white">Lead Results <span id="resultCount" style="font-size:14px;color:#71717a"></span></h3>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>Name</th><th>Address</th><th>Phone</th><th>Email</th><th>Website</th><th>Rating</th><th>Reviews</th><th>Lead Score</th>
+            </tr></thead>
+            <tbody id="tableBody">
+              <tr><td colspan="8" style="text-align:center;padding:32px;color:#71717a">Click "Generate Leads" to start a live search</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- EXPORT CARD -->
+      <section id="export" class="card" style="background:rgba(0,0,0,0.4)">
+        <h3 style="font-size:18px;font-weight:500;color:white;margin-bottom:16px">Export & Email</h3>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <button id="btnCsv" class="btn-purple" onclick="downloadCsv()" disabled>Download CSV</button>
+          <button id="btnEmail" class="btn-gold" style="height:auto;padding:10px 20px" onclick="sendEmail()" disabled>Send to Email</button>
+          <span id="emailSentMsg" style="display:none;font-size:14px;color:#6ee7b7">✅ Leads sent successfully</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="card" style="background:rgba(24,24,27,0.5);height:fit-content">
+      <h3 style="font-size:18px;font-weight:500;color:white;margin-bottom:16px">Filter Sidebar</h3>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:#e4e4e7">
+            <span>No website only</span>
+            <span title="Only show businesses missing websites" style="width:16px;height:16px;border-radius:50%;border:1px solid #52525b;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#71717a;cursor:help">i</span>
+          </div>
+          <div id="filterNoWeb" class="toggle" onclick="toggleFilter('noWebsite',this)"><div class="toggle-dot"></div></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:#e4e4e7">
+            <span>Low rating</span>
+            <span title="Businesses with rating below 4.0" style="width:16px;height:16px;border-radius:50%;border:1px solid #52525b;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#71717a;cursor:help">i</span>
+          </div>
+          <div id="filterLowRat" class="toggle" onclick="toggleFilter('lowRating',this)"><div class="toggle-dot"></div></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:#e4e4e7">
+            <span>High reviews</span>
+            <span title="Businesses with 150+ reviews" style="width:16px;height:16px;border-radius:50%;border:1px solid #52525b;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#71717a;cursor:help">i</span>
+          </div>
+          <div id="filterHighRev" class="toggle" onclick="toggleFilter('highReviews',this)"><div class="toggle-dot"></div></div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;border-radius:12px;border:1px solid #3f3f46;background:rgba(0,0,0,0.35);padding:16px;font-size:14px;color:#d4d4d8">
+        Active leads: <span id="activeCount" style="font-weight:600;color:#FFD700">0</span>
+      </div>
+
+      <div id="sidebarSummary" style="display:none;margin-top:16px;border-radius:12px;border:1px solid #3f3f46;background:rgba(0,0,0,0.35);padding:16px;font-size:14px;color:#d4d4d8">
+        <p style="font-weight:500;color:white;margin-bottom:8px">Search Summary</p>
+        <p>🟢 High: <span id="sideHigh" style="font-weight:600;color:#fde047">0</span></p>
+        <p>🟡 Medium: <span id="sideMed" style="font-weight:600;color:#d8b4fe">0</span></p>
+        <p>🔵 Low: <span id="sideLow" style="font-weight:600;color:#a1a1aa">0</span></p>
+        <p>🚫 No Website: <span id="sideNoWeb" style="font-weight:600;color:#fdba74">0</span></p>
+        <p>📧 Emails: <span id="sideEmail" style="font-weight:600;color:#6ee7b7">0</span></p>
+      </div>
+    </aside>
+  </div>
+
+  <!-- FOOTER -->
+  <footer style="margin-top:40px;border-top:1px solid rgba(168,85,247,0.3);padding:20px 0;text-align:center;font-size:14px;color:#71717a">
+    Local AI Lead Finder — Premium AI Automation Interface
+  </footer>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+let allLeads = [];
+let currentMode = "Detailed";
+let filters = { noWebsite: false, lowRating: false, highReviews: false };
+let summaryData = null;
+const stepTexts = [
+  "Searching DuckDuckGo Maps...",
+  "Searching DuckDuckGo Web...",
+  "Scraping Google results...",
+  "Extracting emails from websites...",
+  "Scoring and ranking leads...",
+];
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById("modeFast").className = "mode-btn" + (mode === "Fast" ? " active" : "");
+  document.getElementById("modeDetailed").className = "mode-btn" + (mode === "Detailed" ? " active" : "");
+}
+
+function showError(msg) {
+  document.getElementById("errorText").textContent = msg;
+  document.getElementById("errorBar").style.display = "block";
+}
+
+function updateProgress(pct, stepIdx) {
+  document.getElementById("progressFill").style.width = pct + "%";
+  if (stepIdx >= 0) {
+    document.getElementById("progressText").textContent = stepTexts[Math.min(stepIdx, stepTexts.length - 1)];
+  }
+  var items = document.getElementById("stepsList").querySelectorAll("p");
+  for (var i = 0; i < items.length; i++) {
+    if (i <= stepIdx) {
+      items[i].style.color = "#e4e4e7";
+      items[i].textContent = "✅ " + stepTexts[i];
+    } else {
+      items[i].style.color = "#71717a";
+      items[i].textContent = (i + 1) + ". " + stepTexts[i];
+    }
+  }
+}
+
+function getFiltered() {
+  return allLeads.filter(function(l) {
+    if (filters.noWebsite && l.website !== "-" && l.hasWebsite) return false;
+    if (filters.lowRating && l.rating > 4.0) return false;
+    if (filters.highReviews && l.reviews < 150) return false;
+    return true;
+  });
+}
+
+function renderTable() {
+  var leads = getFiltered();
+  var tbody = document.getElementById("tableBody");
+  document.getElementById("resultCount").textContent = "(" + leads.length + " shown)";
+  document.getElementById("activeCount").textContent = leads.length;
+
+  if (leads.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#71717a">No leads match current filters</td></tr>';
+    return;
+  }
+
+  var html = "";
+  for (var i = 0; i < leads.length; i++) {
+    var l = leads[i];
+    var badgeClass = l.score === "High" ? "badge-high" : l.score === "Medium" ? "badge-medium" : "badge-low";
+    var webCell = "";
+    if (l.website && l.website !== "-" && l.hasWebsite) {
+      var href = l.website.startsWith("http") ? l.website : "https://" + l.website;
+      var display = l.website.replace(/https?:\/\//, "").substring(0, 28);
+      webCell = '<a class="web-link" href="' + href + '" target="_blank">' + display + '</a>';
+    } else {
+      webCell = '<span class="no-web">No Website</span>';
+    }
+    var rating = l.rating > 0 ? l.rating.toFixed(1) : "—";
+    var reviews = l.reviews > 0 ? l.reviews : "—";
+
+    html += "<tr>";
+    html += "<td style='font-weight:500;color:#f4f4f5'>" + l.name + "</td>";
+    html += "<td>" + l.address + "</td>";
+    html += "<td>" + (l.phone || "—") + "</td>";
+    html += "<td>" + (l.email || "—") + "</td>";
+    html += "<td>" + webCell + "</td>";
+    html += "<td>" + rating + "</td>";
+    html += "<td>" + reviews + "</td>";
+    html += '<td><span class="badge ' + badgeClass + '" title="' + (l.scoreReasons || []).join(", ") + '">' + l.score + "</span></td>";
+    html += "</tr>";
+  }
+  tbody.innerHTML = html;
+}
+
+function updateSummary(s) {
+  summaryData = s;
+  document.getElementById("summarySection").style.display = "block";
+  document.getElementById("statTotal").textContent = s.total;
+  document.getElementById("statHigh").textContent = s.high;
+  document.getElementById("statMedium").textContent = s.medium;
+  document.getElementById("statLow").textContent = s.low;
+  document.getElementById("statNoWeb").textContent = s.noWebsite;
+  document.getElementById("statEmail").textContent = s.withEmail;
+  document.getElementById("sidebarSummary").style.display = "block";
+  document.getElementById("sideHigh").textContent = s.high;
+  document.getElementById("sideMed").textContent = s.medium;
+  document.getElementById("sideLow").textContent = s.low;
+  document.getElementById("sideNoWeb").textContent = s.noWebsite;
+  document.getElementById("sideEmail").textContent = s.withEmail;
+}
+
+async function generateLeads() {
+  var btn = document.getElementById("btnGenerate");
+  btn.disabled = true;
+  btn.textContent = "Searching...";
+  document.getElementById("loaderIcon").style.display = "inline-block";
+  document.getElementById("errorBar").style.display = "none";
+  document.getElementById("summarySection").style.display = "none";
+  document.getElementById("sidebarSummary").style.display = "none";
+  allLeads = [];
+
+  document.getElementById("tableBody").innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#71717a"><span class="loader"></span> Searching for ' + document.getElementById("inpBusiness").value + ' in ' + document.getElementById("inpLocation").value + '...</td></tr>';
+
+  var pct = 0;
+  var timer = setInterval(function() {
+    if (pct >= 90) return;
+    pct += 0.5;
+    var step = Math.min(stepTexts.length - 1, Math.floor((pct / 100) * stepTexts.length));
+    updateProgress(pct, step);
+  }, 200);
+
+  try {
+    var resp = await fetch(API + "/api/find-leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: document.getElementById("inpLocation").value,
+        businessType: document.getElementById("inpBusiness").value,
+        radius: document.getElementById("inpRadius").value,
+        depthMode: currentMode,
+        email: document.getElementById("inpEmail").value,
+      }),
+    });
+
+    if (!resp.ok) throw new Error("Server error " + resp.status);
+    var data = await resp.json();
+
+    allLeads = (data.leads || []).map(function(l, i) {
+      return {
+        id: i + 1, name: l.name || "", address: l.address || "", phone: l.phone || "",
+        email: l.email || "", website: l.website || "-", rating: l.rating || 0,
+        reviews: l.reviews || 0, score: l.score || "Low",
+        scoreReasons: l.scoreReasons || [], source: l.source || "",
+        hasWebsite: l.hasWebsite || false,
+      };
+    });
+
+    clearInterval(timer);
+    updateProgress(100, stepTexts.length - 1);
+    document.getElementById("progressText").textContent = "✅ Complete — " + allLeads.length + " leads found";
+    document.getElementById("loaderIcon").style.display = "none";
+
+    if (data.summary) updateSummary(data.summary);
+    renderTable();
+
+    document.getElementById("btnCsv").disabled = false;
+    document.getElementById("btnEmail").disabled = false;
+
+  } catch (e) {
+    clearInterval(timer);
+    updateProgress(0, -1);
+    document.getElementById("progressText").textContent = "Ready to launch a new search";
+    document.getElementById("loaderIcon").style.display = "none";
+    showError(e.message || "Cannot connect. Is backend.py running?");
+    document.getElementById("tableBody").innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:#71717a">Click "Generate Leads" to start</td></tr>';
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Generate Leads";
+}
+
+async function downloadCsv() {
+  try {
+    var r = await fetch(API + "/api/download-csv");
+    if (r.ok) {
+      var b = await r.blob();
+      var u = URL.createObjectURL(b);
+      var a = document.createElement("a");
+      a.href = u; a.download = "leads.csv"; a.click();
+      URL.revokeObjectURL(u);
+      return;
+    }
+  } catch {}
+  var hdr = "Name,Address,Phone,Email,Website,Rating,Reviews,Score";
+  var rows = getFiltered().map(function(l) {
+    return [l.name,l.address,l.phone,l.email,l.website,l.rating,l.reviews,l.score].join(",");
+  });
+  var blob = new Blob([hdr + "\n" + rows.join("\n")], { type: "text/csv" });
+  var u = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = u; a.download = "leads.csv"; a.click();
+  URL.revokeObjectURL(u);
+}
+
+function sendEmail() {
+  var em = document.getElementById("inpEmail").value;
+  if (!em) { showError("Enter an email address first"); return; }
+  document.getElementById("emailSentMsg").style.display = "inline";
+  setTimeout(function() { document.getElementById("emailSentMsg").style.display = "none"; }, 3000);
+}
+
+function toggleFilter(key, el) {
+  filters[key] = !filters[key];
+  if (filters[key]) { el.classList.add("on"); } else { el.classList.remove("on"); }
+  if (allLeads.length > 0) renderTable();
+}
+</script>
+</body>
+</html>
