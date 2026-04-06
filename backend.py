@@ -243,31 +243,40 @@ def find_leads(req: SearchReq):
         except Exception as e: print(f"Bing err: {e}")
     all_l=clean(all_l)
     if det and all_l: all_l=enrich(all_l)
-    all_l=score(all_l)
-    od=Path("output"); od.mkdir(exist_ok=True)
-    fp=od/f"leads_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-with open(fp, "w", newline="", encoding="utf-8-sig") as f:
-    w = csv.DictWriter(
-        f,
-        fieldnames=["Score", "Name", "Address", "Phone", "Email", "Website", "Rating", "Reviews", "Source"]
-    )
-    w.writeheader()
-    for l in all_l:
-        w.writerow({
-            "Score": l.lead_score,
-            "Name": l.name,
-            "Address": l.address,
-            "Phone": l.phone,
-            "Email": l.email or "",
-            "Website": l.website or "NONE",
-            "Rating": l.rating,
-            "Reviews": l.review_count,
-            "Source": l.source
-        })
-    csv_path=fp
-    sm={"total":len(all_l),"high":sum(1 for l in all_l if l.lead_score=="High"),"medium":sum(1 for l in all_l if l.lead_score=="Medium"),"low":sum(1 for l in all_l if l.lead_score=="Low"),"noWebsite":sum(1 for l in all_l if not l.has_website),"withEmail":sum(1 for l in all_l if l.email or l.emails_found)}
+    all_l = score(all_l)
+    od = Path("output")
+    od.mkdir(exist_ok=True)
+    fp = od / f"leads_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+
+    with open(fp, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(
+            f,
+            fieldnames=["Score", "Name", "Address", "Phone", "Email", "Website", "Rating", "Reviews", "Source"]
+        )
+        w.writeheader()
+        for l in all_l:
+            w.writerow({
+                "Score": l.lead_score,
+                "Name": l.name,
+                "Address": l.address,
+                "Phone": l.phone,
+                "Email": l.email or "",
+                "Website": l.website or "NONE",
+                "Rating": l.rating,
+                "Reviews": l.review_count,
+                "Source": l.source,
+            })
+
+    csv_path = fp
+    sm = {
+        "total": len(all_l),
+        "high": sum(1 for l in all_l if l.lead_score == "High"),
+        "medium": sum(1 for l in all_l if l.lead_score == "Medium"),
+        "low": sum(1 for l in all_l if l.lead_score == "Low"),
+        "noWebsite": sum(1 for l in all_l if not l.has_website),
+    }
     print(f"Done: {sm}\nCSV: {fp}")
-    return {"leads":[l.to_dict() for l in all_l],"summary":sm,"csvFile":str(fp)}
+    return {"leads": [l.to_dict() for l in all_l], "summary": sm, "csvFile": str(fp)}
 
 @app.get("/api/download-csv")
 def dl_csv():
