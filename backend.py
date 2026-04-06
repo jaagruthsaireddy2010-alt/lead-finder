@@ -234,10 +234,6 @@ def find_leads(req: SearchReq):
     det=req.depthMode.lower()=="detailed"
     try: all_l.extend(ddg_maps(req.businessType,req.location))
     except Exception as e: print(f"Maps err: {e}")
-    try: all_l.extend(ddg_web(req.businessType,req.location))
-    except Exception as e: print(f"Web err: {e}")
-    try: all_l.extend(google_search(req.businessType,req.location))
-    except Exception as e: print(f"Google err: {e}")
     if det:
         try: all_l.extend(bing_search(req.businessType,req.location))
         except Exception as e: print(f"Bing err: {e}")
