@@ -230,15 +230,19 @@ csv_path=None
 def find_leads(req: SearchReq):
     global csv_path
     print(f"\n{'='*50}\nSearch: {req.businessType} in {req.location} | {req.depthMode}\n{'='*50}")
-    all_l=[]
-    det=req.depthMode.lower()=="detailed"
-    try: all_l.extend(ddg_maps(req.businessType,req.location))
-    except Exception as e: print(f"Maps err: {e}")
-    if det:
-        try: all_l.extend(bing_search(req.businessType,req.location))
-        except Exception as e: print(f"Bing err: {e}")
+        all_l=[]
+    import threading
+    def run_with_timeout(func, args, timeout=25):
+        result = []
+        def target():
+            try: result.extend(func(*args))
+            except Exception as e: print(f"Thread err: {e}")
+        t = threading.Thread(target=target)
+        t.start()
+        t.join(timeout=timeout)
+        return result
+    all_l.extend(run_with_timeout(ddg_maps, (req.businessType, req.location), timeout=25))
     all_l=clean(all_l)
-    if det and all_l: all_l=enrich(all_l)
     all_l = score(all_l)
     od = Path("output")
     od.mkdir(exist_ok=True)
