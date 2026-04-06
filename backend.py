@@ -230,7 +230,7 @@ csv_path=None
 def find_leads(req: SearchReq):
     global csv_path
     print(f"\n{'='*50}\nSearch: {req.businessType} in {req.location} | {req.depthMode}\n{'='*50}")
-        all_l=[]
+    all_l=[]
     import threading
     def run_with_timeout(func, args, timeout=25):
         result = []
