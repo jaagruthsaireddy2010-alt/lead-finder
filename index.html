@@ -230,7 +230,11 @@ select option{background:#18181b;color:white}
 </div>
 
 <script>
-const API = "https://lead-finder-45ln.onrender.com";
+const API =
+  window.location.hostname === "127.0.0.1" ||
+  window.location.hostname === "localhost"
+    ? "http://127.0.0.1:8000"
+    : "";
 let allLeads = [];
 let currentMode = "Detailed";
 let filters = { noWebsite: false, lowRating: false, highReviews: false };
